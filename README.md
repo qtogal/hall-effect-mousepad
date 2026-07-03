@@ -2,10 +2,10 @@ Readme for the halleffectmousepad project.
 
 This project aims to create a mousepad that includes a grid of hall effect sensors to detect magnets. The values of each will be interpreted by a program to calculate the position of the magnet even if it is not on the exact position of a sensor. 
 
-(images/Case_no_top.png)
-(images/Case_with_top.png)
-(images/PCB.png)
-(images/Schematic.png)
+![alt text](images/Case_no_top.png)
+![alt text](images/Case_with_top.png)
+![alt text](images/PCB.png)
+![alt text](images/Schematic.png)
 
 # BOM
  |Part|QTY|
