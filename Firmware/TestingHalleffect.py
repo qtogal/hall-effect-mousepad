@@ -1,7 +1,9 @@
 import time
+import board
 import analogio
 import digitalio
-import board
+import usb_hid
+from adafruit_hid.mouse import Mouse
 
 COLS = 6
 ROWS = 4
@@ -62,9 +64,9 @@ def set_channel(ch):
 def read_all():
     for i in range(8):
         set_channel(i)
-        sensor_map[mux0_sensor_map[i][3]][mux0_sensor_map[i][2]] = abs(adc[mux0_sensor_map[i][1]].value)
-        sensor_map[mux1_sensor_map[i][3]][mux1_sensor_map[i][2]] = abs(adc[mux1_sensor_map[i][1]].value)
-        sensor_map[mux2_sensor_map[i][3]][mux2_sensor_map[i][2]] = abs(adc[mux2_sensor_map[i][1]].value)
+        sensor_map[mux0_sensor_map[i][2]][mux0_sensor_map[i][1]] = abs(adc[mux0_sensor_map[i][0]].value)
+        sensor_map[mux1_sensor_map[i][2]][mux1_sensor_map[i][1]] = abs(adc[mux1_sensor_map[i][0]].value)
+        sensor_map[mux2_sensor_map[i][2]][mux2_sensor_map[i][1]] = abs(adc[mux2_sensor_map[i][0]].value)
     
 #actual code for mouse detection
 
@@ -74,6 +76,9 @@ lift = 3000                             # adc value maximum before considering l
 dpi = 20                                # scaling movement distance
 wait = 0.001                            # delay set for mux to settle
 calibration_frames = 20                 # initial sensor calibration frames
+smooth = 0.5                            # fraction of change in x and y recorded as movement
+delay = 0.25
+click_ratio = 1.5
 
 # Calibrate sensor readings by taking an average over 20 frames
 
@@ -87,12 +92,18 @@ for i in range(MUX):
     for j in range(N/MUX):
         baseline_sensor[i][j]/calibration_frames
 
-ini_x = 0
-ini_y = 0
-
+prev_cx = None       # previous frame position
+prev_cy = None
+smooth_cx = None     # low-pass-filtered cursor position
+smooth_cy = None
+rem_x = 0.0          # carry sub-pixel remainders
+rem_y = 0.0
+hover_peak = None    # the resting field strength while just hovering
+clicking = False     # if button is pressed
+settle_until = 0.0   # clicks don't activate until this time after the magnet lands
 
 while True:
-
+    now = time.monotonic()
     sx = 0.0
     sy = 0.0
     total = 0
@@ -110,6 +121,57 @@ while True:
                 total += w
                 if w> peak: 
                     peak = w
+    if total > LIFT:   #weighted average
+        cx = sx/total
+        cy = sy/total
+        if smooth_cx is None:  #record cx and cy as smooth_cx and smooth_cy if they don't have any values stored
+            smooth_cx = cx
+            smooth_cy = cy
+        else:
+            smooth_cx += (cx - smooth_cx)*smooth
+            smooth_cy += (cy - smooth_cy)*smooth
+        if prev_cx is None:   #No previous position is recorded
+            prev_cx = smooth_cx
+            prev_cy = smooth_cy
+            rem_x = 0.0
+            rem_y = 0.0
+        else:
+            dx = (smooth_cx - prev_cx)*dpi + rem_x
+            dy = (smooth_cy - prev_cy)*dpi + rem_y
+            ix = int(dx)
+            iy = int(dy)
+            rem_x = dx - ix
+            rem_y = dy - iy
+            if ix != 0 or iy != 0:
+                mouse.move(x=ix, y=iy)
+            prev_cx = smooth_cx
+            prev_cy = smooth_cy
+
+        if hover_peak is None:
+            hover_peak = peak
+            settle_until = now + delay
+        if now<settle_until:
+            hover_peak = peak
+        elif not clicking:
+            if peak > hover_peak*click_ratio:
+                mouse.press(Mouse.LEFT_BUTTON)
+                clicking = True
+        else:
+            if peak<hover_peak*1.1:
+                mouse.release(Mouse.LEFT_BUTTON)
+                clicking = False
+    else:
+        prev_cx = None       
+        prev_cy = None
+        smooth_cx = None     
+        smooth_cy = None
+        hover_peak = None  
+
+
+
+
+
+
     
-    if total > lift:
-        
+
+
