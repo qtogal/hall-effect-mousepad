@@ -98,7 +98,8 @@ smooth_cx = None     # low-pass-filtered cursor position
 smooth_cy = None
 rem_x = 0.0          # carry sub-pixel remainders
 rem_y = 0.0
-hover_peak = None    # the resting field strength while just hovering
+click_top_threshold = 5000    # click when reading a value above this
+click_bot_threshold = 4000    # unclick when reading a value below this
 clicking = False     # if button is pressed
 settle_until = 0.0   # clicks don't activate until this time after the magnet lands
 
@@ -147,19 +148,15 @@ while True:
             prev_cx = smooth_cx
             prev_cy = smooth_cy
 
-        if hover_peak is None:
-            hover_peak = peak
-            settle_until = now + delay
-        if now<settle_until:
-            hover_peak = peak
-        elif not clicking:
-            if peak > hover_peak*click_ratio:
+        if not clicking:
+            if peak>click_top_threshold:
                 mouse.press(Mouse.LEFT_BUTTON)
                 clicking = True
-        else:
-            if peak<hover_peak*1.1:
+        else: 
+            if peak < click_bot_threshold:
                 mouse.release(Mouse.LEFT_BUTTON)
                 clicking = False
+
     else:
         prev_cx = None       
         prev_cy = None
