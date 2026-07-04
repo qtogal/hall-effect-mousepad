@@ -6,6 +6,8 @@ This project aims to create a mousepad that includes a grid of hall effect senso
 ![alt text](images/Case_with_top.png)
 ![alt text](images/PCB.png)
 ![alt text](images/Schematic.png)
+![alt text](images/pic_no_top.png)
+![alt text](images/pic_with_top.png)
 
 # BOM
  |Part|QTY|
